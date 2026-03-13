@@ -1,0 +1,229 @@
+{
+  "name": "Update Host Zabbix Template",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## MAN\n1 : Modifier les NODES HTTP REQUEST : ajouter votre clé API et l'URL Zabbix\n2 : Modifier la NODE IF : renseigner l'ID du Template par défaut (SNMP Generic)\n3 : Modifier le NODE Code : Définir les correspondances OID → Template et l'ID du Template par défaut (même valeur qu'étape 2)",
+        "height": 208,
+        "width": 624,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1248, -96],
+      "typeVersion": 1,
+      "id": "be6831d1-be72-4d2f-91ca-71186c934332",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Check du System Object ID\nRécupération de l'OID SNMP et mapping vers le bon template vendor",
+        "height": 336,
+        "width": 864,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, 0],
+      "typeVersion": 1,
+      "id": "6d52ff16-fe2e-45c9-8711-8933ee6c5303",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {},
+      "name": "On clicking 'execute'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [-1328, 256],
+      "typeVersion": 1,
+      "id": "2e9254d9-fd36-4851-8584-1ecdd9893cbb"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://YOUR_ZABBIX_HOST/zabbix/api_jsonrpc.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_ZABBIX_API_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"host.get\",\n    \"params\": {\n        \"output\": [\"hostid\", \"host\"],\n        \"selectParentTemplates\": [\"templateid\", \"name\"],\n        \"filter\": { \"status\": [0, 1] }\n    },\n    \"id\": 1\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1104, 256],
+      "id": "7f32a300-9fdf-4939-9a17-4c98003b8264",
+      "name": "Get Host Zabbix"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "result",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [-880, 256],
+      "id": "c6b9bc60-64d8-4e8d-a3ce-d33fbdeae5ec",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "74e220be-d00e-44ee-8538-a5154b24e4c0",
+              "leftValue": "={{ $json.parentTemplates[0].templateid }}",
+              "rightValue": "YOUR_DEFAULT_TEMPLATE_ID",
+              "operator": { "type": "string", "operation": "contains" }
+            },
+            {
+              "id": "a819251e-8874-44b7-857f-401a02c16f8d",
+              "leftValue": "={{ $json.parentTemplates.length }}",
+              "rightValue": 1,
+              "operator": { "type": "number", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-656, 256],
+      "id": "cdb3c218-6c50-49ac-ac10-af428a40da88",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://YOUR_ZABBIX_HOST/zabbix/api_jsonrpc.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_ZABBIX_API_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"item.get\",\n    \"params\": {\n        \"output\": [\"lastvalue\"],\n        \"selectHosts\": [\"host\"],\n        \"hostids\": \"{{ $json.hostid }}\",\n        \"search\": { \"name\": \"System description\" },\n        \"searchByAny\": true\n    },\n    \"id\": 1\n}",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-432, 128],
+      "id": "07413be5-4ec0-4d78-aaf7-b3a5e29fae21",
+      "name": "Get Template Zabbix"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c19ed2d9-9d18-4d6c-8fa8-8cb6431739b7",
+              "name": "Host",
+              "value": "={{ $json.result[0].hosts[0].host }}",
+              "type": "string"
+            },
+            {
+              "id": "a99b5899-de08-4fb0-98bf-e623c73a6fa0",
+              "name": "Sys-description",
+              "value": "={{ $json.result[0].lastvalue }}",
+              "type": "string"
+            },
+            {
+              "id": "19c39d85-2655-4449-a11c-3411ffd3ecc1",
+              "name": "hostid",
+              "value": "={{ $json.result[0].hosts[0].hostid }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-208, 256],
+      "id": "616df9d6-0502-4937-97f4-017c5726d501",
+      "name": "Formatage des données"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://YOUR_ZABBIX_HOST/zabbix/api_jsonrpc.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_ZABBIX_API_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"item.get\",\n  \"params\": {\n    \"output\": [\"lastvalue\"],\n    \"selectHosts\": [\"host\"],\n    \"hostids\": \"{{ $json.hostid }}\",\n    \"search\": { \"name\": \"System object ID\" }\n  },\n  \"id\": 1\n}",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 128],
+      "id": "35b49f0a-8d02-44c1-9f43-3ad1fa306d72",
+      "name": "Get SysOid Zabbix"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const inputItem of items) {\n  const data = inputItem.json;\n  \n  let sysOID = '';\n  if (data.result && data.result.length > 0) {\n    sysOID = data.result[0].lastvalue || '';\n  }\n  \n  if (!sysOID || sysOID.trim() === '') {\n    console.log(`❌ Pas d'OID pour hostid: ${data.result?.[0]?.hosts?.[0]?.hostid || 'unknown'}`);\n    continue;\n  }\n  \n  let cleanOID = sysOID.trim().toLowerCase();\n  \n  // Convertir format SNMPv2-SMI::enterprises.X en 1.3.6.1.4.1.X\n  if (cleanOID.startsWith('snmpv2-smi::enterprises.')) {\n    cleanOID = cleanOID.replace('snmpv2-smi::enterprises.', '1.3.6.1.4.1.');\n  }\n  \n  const hostName = data.result[0].hosts[0].host;\n  const hostId = data.result[0].hosts[0].hostid;\n  \n  // ===== TABLE DE MAPPING OID → TEMPLATE =====\n  // Remplacer les templateId par les IDs réels de votre instance Zabbix\n  const oidMappings = [\n    // Fortinet - Modèles spécifiques\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.12356\\.101\\.1\\.441/, templateId: 'YOUR_TEMPLATE_ID_FORTINET', vendor: 'Fortinet FG-60E/80E' },\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.12356\\.101\\.1\\.644/, templateId: 'YOUR_TEMPLATE_ID_FORTINET', vendor: 'Fortinet FG-100F' },\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.12356\\.101\\.1\\.845/, templateId: 'YOUR_TEMPLATE_ID_FORTINET', vendor: 'Fortinet FG-200E' },\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.12356\\.101\\.1\\.1000/, templateId: 'YOUR_TEMPLATE_ID_FORTINET', vendor: 'Fortinet FG-400F' },\n    // Fortinet - Générique (fallback)\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.12356/, templateId: 'YOUR_TEMPLATE_ID_FORTINET', vendor: 'Fortinet (generic)' },\n    // Dell iDRAC\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.674\\.10892\\.5/, templateId: 'YOUR_TEMPLATE_ID_DELL', vendor: 'Dell iDRAC' },\n    // Extreme Networks VSP\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.1916\\.2\\.14/, templateId: 'YOUR_TEMPLATE_ID_EXTREME_VSP', vendor: 'Extreme VSP' },\n    // ADVA Optical\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.2544\\.1\\.11\\.1\\.1/, templateId: 'YOUR_TEMPLATE_ID_ADVA', vendor: 'Adva Optical' },\n    // Extreme FabricEngine\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.1916\\.2\\.306/, templateId: 'YOUR_TEMPLATE_ID_EXTREME_FE', vendor: 'Extreme FabricEngine' },\n    // Linux Net-SNMP\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.8072\\.3\\.2\\.10/, templateId: 'YOUR_TEMPLATE_ID_LINUX', vendor: 'Linux (Net-SNMP)' },\n    // Windows Server\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.311\\.1\\.1\\.3/, templateId: 'YOUR_TEMPLATE_ID_WINDOWS', vendor: 'Windows Server' },\n    // Cisco\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.9\\.1\\./, templateId: 'YOUR_TEMPLATE_ID_CISCO', vendor: 'Cisco' },\n    // HP/Aruba\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.11\\./, templateId: 'YOUR_TEMPLATE_ID_HP', vendor: 'HP/Aruba' },\n    // Ubiquiti AP\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.41112/, templateId: 'YOUR_TEMPLATE_ID_UBIQUITI', vendor: 'Ubiquiti AP' },\n    // Juniper MX\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.2636\\.1\\.1\\.1\\.2/, templateId: 'YOUR_TEMPLATE_ID_JUNIPER_MX', vendor: 'Juniper MX' },\n    // Juniper EX\n    { pattern: /1\\.3\\.6\\.1\\.4\\.1\\.2636\\.1\\.1\\.1\\.3/, templateId: 'YOUR_TEMPLATE_ID_JUNIPER_EX', vendor: 'Juniper EX' }\n    // 🆕 AJOUTEZ VOS OID ICI AU FUR ET À MESURE\n  ];\n  \n  let matched = false;\n  for (const mapping of oidMappings) {\n    if (mapping.pattern.test(cleanOID)) {\n      console.log(`✅ Match OID: ${hostName} → ${mapping.vendor} (${cleanOID})`);\n      results.push({\n        json: {\n          hostName: hostName,\n          hostIdToUpdate: hostId,\n          newTemplateId: mapping.templateId,\n          baseTemplateId: 'YOUR_DEFAULT_TEMPLATE_ID',\n          detectedVendor: mapping.vendor,\n          detectedOID: sysOID,\n          detectionMethod: 'OID'\n        }\n      });\n      matched = true;\n      break;\n    }\n  }\n  \n  if (!matched) {\n    console.log(`⚠️ OID non reconnu: ${hostName} - ${cleanOID}`);\n  }\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [352, 128],
+      "id": "bc092e25-c3f1-4055-8bac-d57f5a7c7359",
+      "name": "Décider du Template Final Bis"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://YOUR_ZABBIX_HOST/zabbix/api_jsonrpc.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_ZABBIX_API_TOKEN" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"host.update\",\n    \"params\": {\n        \"hostid\": \"{{ $json.hostIdToUpdate }}\",\n        \"templates\": [{ \"templateid\": \"{{ $json.newTemplateId }}\" }],\n        \"templates_clear\": [{ \"templateid\": \"{{ $json.baseTemplateId }}\" }]\n    },\n    \"id\": 1\n}",
+        "options": {
+          "response": { "response": { "responseFormat": "json" } }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 128],
+      "id": "18bc1418-ada7-4e21-a9ea-5a662200d3c5",
+      "name": "Update Host Zabbix with OID"
+    }
+  ],
+  "connections": {
+    "On clicking 'execute'": { "main": [[{ "node": "Get Host Zabbix", "type": "main", "index": 0 }]] },
+    "Get Host Zabbix": { "main": [[{ "node": "Split Out", "type": "main", "index": 0 }]] },
+    "Split Out": { "main": [[{ "node": "If", "type": "main", "index": 0 }]] },
+    "If": { "main": [[{ "node": "Get Template Zabbix", "type": "main", "index": 0 }]] },
+    "Get Template Zabbix": { "main": [[{ "node": "Formatage des données", "type": "main", "index": 0 }]] },
+    "Formatage des données": { "main": [[{ "node": "Get SysOid Zabbix", "type": "main", "index": 0 }]] },
+    "Get SysOid Zabbix": { "main": [[{ "node": "Décider du Template Final Bis", "type": "main", "index": 0 }]] },
+    "Décider du Template Final Bis": { "main": [[{ "node": "Update Host Zabbix with OID", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "YOUR_N8N_INSTANCE_ID" },
+  "tags": [{ "name": "Zabbix" }]
+}
