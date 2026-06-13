@@ -18,6 +18,7 @@ Ce workflow n8n détecte automatiquement le type d'équipement réseau via son *
 
 ---
 <img width="1536" height="1024" alt="ChatGPT Image 13 juin 2026, 12_17_21" src="https://github.com/user-attachments/assets/57dd3e5e-6160-43f3-936b-e0431912ad7f" />
+---
 ## Flux de traitement
 
 ```
